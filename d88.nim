@@ -17,7 +17,7 @@ proc dump(filename : string) =
     if not fs.isNil:
         var data = d88_header.get(fs)
         echo fmt"Disk name = '{cast[string](data.disk_name)}'"
-        echo fmt"Write protected? = '{data.write_protected}'"
+        echo fmt"Write protected? = '{data.write_protected == 0x10}'"
         echo fmt"Disk type = '{data.disk_type}'"
         echo fmt"Disk size = '{data.disk_size}'"
         echo fmt"Reserved = '{data.reserved}'"
