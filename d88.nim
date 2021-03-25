@@ -5,8 +5,8 @@ import parseopt
 
 proc dump(filename : string) =
     createParser(d88_header):
-        s: disk_name[17]
-        8: reserved[9]
+        u8: disk_name[17]
+        u8: reserved[9]
         u8: write_protected
         u8: disk_type
         u32: disk_size
@@ -16,10 +16,11 @@ proc dump(filename : string) =
     defer: fs.close()
     if not fs.isNil:
         var data = d88_header.get(fs)
-        echo fmt"Disk name = '{data.disk_name}'"
+        echo fmt"Disk name = '{cast[string](data.disk_name)}'"
         echo fmt"Write protected? = '{data.write_protected}'"
         echo fmt"Disk type = '{data.disk_type}'"
         echo fmt"Disk size = '{data.disk_size}'"
+        echo fmt"Reserved = '{data.reserved}'"
 
 proc usage() =
     echo "Usage: d88 [command] filename"
