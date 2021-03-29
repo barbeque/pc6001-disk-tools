@@ -23,7 +23,7 @@ proc dump(filename : string) =
         echo fmt"Reserved = '{data.reserved}'"
 
 proc usage() =
-    echo "Usage: d88 [command] filename"
+    echo fmt"Usage: {lastPathPart(paramStr(0))} [command] filename"
     echo "Commands: --help, --dump"
 
 var filename: string
