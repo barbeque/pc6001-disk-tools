@@ -1,5 +1,5 @@
 import os
-import binaryparse, streams
+import streams
 import strformat
 import parseopt
 
