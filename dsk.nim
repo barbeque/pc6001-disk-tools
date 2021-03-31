@@ -5,6 +5,12 @@ import parseopt
 import strutils
 import hashes
 
+const SIDES = 1
+const SECTORS = 16
+const BYTES_PER_SECTOR = 256
+const TRACK_LENGTH = SIDES * SECTORS * BYTES_PER_SECTOR;    
+const SIZE_1D_IMAGE = 40 * TRACK_LENGTH;
+
 proc insertFilenameTag(input_filename: string, filename_tag : string) : string =
     var (dir, old_filename, old_extension) = splitFile(input_filename)
     return joinPath(dir, old_filename & filename_tag & old_extension) # addFileExt acts weird here
@@ -12,13 +18,6 @@ proc insertFilenameTag(input_filename: string, filename_tag : string) : string =
 proc doubleTracksInImage(input_filename : string) =
     # first, count up the size... we want it to make sense
     # should be 40 tracks * 1 side * 16 sectors/track * 256bytes/sector
-    const TRACKS = 40
-    const SIDES = 1
-    const SECTORS = 16
-    const BYTES_PER_SECTOR = 256
-    const TRACK_LENGTH = SIDES * SECTORS * BYTES_PER_SECTOR;
-    const SIZE_1D_IMAGE = TRACKS * TRACK_LENGTH;
-
     var disk_buffer: array[SIZE_1D_IMAGE, char]
     var fs = newFileStream(input_filename, fmRead) # TODO: Win32 binary file argument needed?
     defer: fs.close()
@@ -48,11 +47,6 @@ proc doubleTracksInImage(input_filename : string) =
     doAssert output.getPosition() == SIZE_1D_IMAGE * 2, "Should have written exactly twice as many bytes when doubling the image"
 
 proc dumpTracks(input_filename : string) =
-    const SIDES = 1
-    const SECTORS = 16
-    const BYTES_PER_SECTOR = 256
-    const TRACK_LENGTH = SIDES * SECTORS * BYTES_PER_SECTOR;
-
     var track_buffer: array[TRACK_LENGTH, char]
     var track_number = 1
 
@@ -79,10 +73,6 @@ proc dumpTracks(input_filename : string) =
 
 proc expand40TrackImage(input_filename : string) =
     # append 40 tracks of FF onto the end, and change any "SYS" tag to "RXR"
-    const SIDES = 1
-    const SECTORS = 16
-    const BYTES_PER_SECTOR = 256
-    const TRACK_LENGTH = SIDES * SECTORS * BYTES_PER_SECTOR;
     const FORTY_TRACK_IMAGE_LENGTH = TRACK_LENGTH * 40
 
     var fs = newFileStream(input_filename, fmRead)
@@ -114,29 +104,60 @@ proc expand40TrackImage(input_filename : string) =
     output.flush()
     doAssert output.getPosition() == FORTY_TRACK_IMAGE_LENGTH * 2;
 
+proc replaceIpl(filename : string, patchname : string) =
+    var patchBuffer : array[BYTES_PER_SECTOR, char]
+    var patchfs = newFileStream(patchname, fmRead)
+    defer: patchfs.close()
+    doAssert patchFs.isNil == false, fmt"Patch '{patchname}' could not be loaded"
+    doAssert patchfs.readData(addr(patchBuffer), BYTES_PER_SECTOR) == BYTES_PER_SECTOR, fmt"Patch was too short (expected {BYTES_PER_SECTOR})"
+    doAssert patchFs.atEnd() == true, fmt"Patch was too long (expected {BYTES_PER_SECTOR})"
+
+    var diskBuffer : array[SIZE_1D_IMAGE, char]
+    var ifs = newFileStream(filename, fmRead)
+    defer: ifs.close()
+    doAssert ifs.isNil == false, fmt"Source disk image '{filename}' could not be loaded"
+    doAssert ifs.readData(addr(diskBuffer), SIZE_1D_IMAGE) == SIZE_1D_IMAGE, "Source disk image was too short"
+    doAssert ifs.atEnd() == true, "Source disk image was too long"
+
+    # apply the patch
+    for i in 0 ..< BYTES_PER_SECTOR:
+        diskBuffer[i] = patchBuffer[i];
+
+    # write out the patch
+    var output_filename = insertFilenameTag(filename, ".patched")
+    var ofs = newFileStream(output_filename, fmWrite)
+    ofs.writeData(addr(diskBuffer), SIZE_1D_IMAGE)
+    ofs.close()
+
 proc usage() =
-    echo fmt"Usage: {lastPathPart(paramStr(0))} [command] filename"
-    echo "Commands: --help, --double, --tracks"
+    echo fmt"Usage: {lastPathPart(paramStr(0))} [command] filename <patchname>"
+    echo "Commands: --help, --double, --expand, --tracks, --patch-ipl"
 
 var filename: string
+var patchname: string
 type Mode = enum
-    dskNil, dskDouble40TrackImage, dskGetInfo, dskExpand40TrackImage
+    dskNil, dskDouble40TrackImage, dskGetInfo, dskExpand40TrackImage, dskReplaceIpl
 var mode : Mode = dskNil
 
 for kind, key, val in getopt(commandLineParams()):
     case kind
     of cmdArgument:
-        filename = key
+        if filename == "":
+            filename = key
+        else:
+            patchname = key
     of cmdLongOption, cmdShortOption:
         case key
         of "help", "h": usage()
         of "double", "d": mode = dskDouble40TrackImage
         of "expand", "e": mode = dskExpand40TrackImage
         of "tracks", "t": mode = dskGetInfo
+        of "patch-ipl", "p": mode = dskReplaceIpl
     of cmdEnd:
         assert(false)
 
 if filename == "":
+    echo "Missing filename"
     usage()
 else:
     # begin parsing
@@ -144,4 +165,10 @@ else:
     of dskDouble40TrackImage: doubleTracksInImage(filename)
     of dskGetInfo: dumpTracks(filename)
     of dskExpand40TrackImage: expand40TrackImage(filename)
+    of dskReplaceIpl:
+        if patchname == "":
+            echo "Missing patch name"
+            usage()
+        else:
+            replaceIpl(filename, patchname)
     else: usage()
