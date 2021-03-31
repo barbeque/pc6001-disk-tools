@@ -132,15 +132,22 @@ proc replaceIpl(filename : string, patchname : string) =
 
 # generate an image that can be used to test tracks were written and read
 # properly (each track is full of a different byte)
-proc generateCalibrationImage(filename : string) =
+proc generateCalibrationImage(filename : string, is40Track : bool) =
     var ofs = newFileStream(filename, fmWrite)
     defer: ofs.close()
 
-    for track in 0 ..< 80:
+    var tracks = 80
+    if is40Track:
+        tracks = 40 # no ternary operator???
+
+    for track in 0 ..< tracks:
         for i in 0 ..< TRACK_LENGTH:
             ofs.write(cast[char](track)) # TODO: We might need something more clever to detect subtle corruption, but this should get me down the road
 
-    doAssert ofs.getPosition() == SIZE_1DD_IMAGE
+    if is40Track:
+        doAssert ofs.getPosition() == SIZE_1D_IMAGE
+    else:
+        doAssert ofs.getPosition() == SIZE_1DD_IMAGE
 
 proc usage() =
     echo fmt"Usage: {lastPathPart(paramStr(0))} [command] filename <patchname>"
@@ -149,6 +156,7 @@ proc usage() =
 
 var filename: string
 var patchname: string
+var is40Track = false
 type Mode = enum
     dskNil, dskDouble40TrackImage, dskGetInfo, dskExpand40TrackImage, dskReplaceIpl, dskGenerateCalibrationImage
 var mode : Mode = dskNil
@@ -169,6 +177,8 @@ for kind, key, val in getopt(commandLineParams()):
         of "tracks", "t": mode = dskGetInfo
         of "patch-ipl", "p": mode = dskReplaceIpl
         of "generate", "g": mode = dskGenerateCalibrationImage
+        of "40": is40Track = true
+        of "80": is40Track = false
     of cmdEnd:
         assert(false)
 
@@ -187,5 +197,5 @@ else:
         else:
             replaceIpl(filename, patchname)
     of dskGenerateCalibrationImage:
-        generateCalibrationImage(filename)
+        generateCalibrationImage(filename, is40Track)
     else: usage()
