@@ -132,6 +132,7 @@ proc replaceIpl(filename : string, patchname : string) =
 proc usage() =
     echo fmt"Usage: {lastPathPart(paramStr(0))} [command] filename <patchname>"
     echo "Commands: --help, --double, --expand, --tracks, --patch-ipl"
+    quit(1)
 
 var filename: string
 var patchname: string
@@ -148,7 +149,8 @@ for kind, key, val in getopt(commandLineParams()):
             patchname = key
     of cmdLongOption, cmdShortOption:
         case key
-        of "help", "h": usage()
+        of "help", "h":
+            usage()
         of "double", "d": mode = dskDouble40TrackImage
         of "expand", "e": mode = dskExpand40TrackImage
         of "tracks", "t": mode = dskGetInfo
@@ -157,7 +159,6 @@ for kind, key, val in getopt(commandLineParams()):
         assert(false)
 
 if filename == "":
-    echo "Missing filename"
     usage()
 else:
     # begin parsing
