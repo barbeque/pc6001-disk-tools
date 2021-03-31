@@ -47,6 +47,7 @@ proc dump(filename : string) =
 proc usage() =
     echo fmt"Usage: {lastPathPart(paramStr(0))} [command] filename"
     echo "Commands: --help, --dump, --media <new media type>"
+    echo "Options: --verbose"
     quit(1)
 
 var filename: string
