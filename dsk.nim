@@ -10,6 +10,7 @@ const SECTORS = 16
 const BYTES_PER_SECTOR = 256
 const TRACK_LENGTH = SIDES * SECTORS * BYTES_PER_SECTOR;    
 const SIZE_1D_IMAGE = 40 * TRACK_LENGTH;
+const SIZE_1DD_IMAGE = 80 * TRACK_LENGTH;
 
 proc insertFilenameTag(input_filename: string, filename_tag : string) : string =
     var (dir, old_filename, old_extension) = splitFile(input_filename)
@@ -129,15 +130,27 @@ proc replaceIpl(filename : string, patchname : string) =
     ofs.writeData(addr(diskBuffer), SIZE_1D_IMAGE)
     ofs.close()
 
+# generate an image that can be used to test tracks were written and read
+# properly (each track is full of a different byte)
+proc generateCalibrationImage(filename : string) =
+    var ofs = newFileStream(filename, fmWrite)
+    defer: ofs.close()
+
+    for track in 0 ..< 80:
+        for i in 0 ..< TRACK_LENGTH:
+            ofs.write(cast[char](track)) # TODO: We might need something more clever to detect subtle corruption, but this should get me down the road
+
+    doAssert ofs.getPosition() == SIZE_1DD_IMAGE
+
 proc usage() =
     echo fmt"Usage: {lastPathPart(paramStr(0))} [command] filename <patchname>"
-    echo "Commands: --help, --double, --expand, --tracks, --patch-ipl"
+    echo "Commands: --help, --double, --expand, --tracks, --patch-ipl, --generate"
     quit(1)
 
 var filename: string
 var patchname: string
 type Mode = enum
-    dskNil, dskDouble40TrackImage, dskGetInfo, dskExpand40TrackImage, dskReplaceIpl
+    dskNil, dskDouble40TrackImage, dskGetInfo, dskExpand40TrackImage, dskReplaceIpl, dskGenerateCalibrationImage
 var mode : Mode = dskNil
 
 for kind, key, val in getopt(commandLineParams()):
@@ -145,7 +158,7 @@ for kind, key, val in getopt(commandLineParams()):
     of cmdArgument:
         if filename == "":
             filename = key
-        else:
+        elif mode == dskReplaceIpl:
             patchname = key
     of cmdLongOption, cmdShortOption:
         case key
@@ -155,6 +168,7 @@ for kind, key, val in getopt(commandLineParams()):
         of "expand", "e": mode = dskExpand40TrackImage
         of "tracks", "t": mode = dskGetInfo
         of "patch-ipl", "p": mode = dskReplaceIpl
+        of "generate", "g": mode = dskGenerateCalibrationImage
     of cmdEnd:
         assert(false)
 
@@ -172,4 +186,6 @@ else:
             usage()
         else:
             replaceIpl(filename, patchname)
+    of dskGenerateCalibrationImage:
+        generateCalibrationImage(filename)
     else: usage()
