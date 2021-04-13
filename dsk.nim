@@ -149,16 +149,27 @@ proc generateCalibrationImage(filename : string, is40Track : bool) =
     else:
         doAssert ofs.getPosition() == SIZE_1DD_IMAGE
 
+proc setRxrHeader(filename: string) =
+    var diskContents = readFile(filename)
+    if diskContents[0] == 'S' and diskContents[1] == 'Y' and diskContents[2] == 'S':
+        diskContents[0] = 'R'
+        diskContents[1] = 'X'
+        diskContents[2] = 'R'
+        var output_filename = insertFilenameTag(filename, ".RXR")
+        writeFile(output_filename, diskContents)
+    else:
+        echo "Disk image does not contain SYS header, no patch was performed"
+
 proc usage() =
     echo fmt"Usage: {lastPathPart(paramStr(0))} [command] filename <patchname>"
-    echo "Commands: --help, --double, --expand, --tracks, --patch-ipl, --generate"
+    echo "Commands: --help, --double, --expand, --tracks, --patch-ipl, --generate, --rxr"
     quit(1)
 
 var filename: string
 var patchname: string
 var is40Track = false
 type Mode = enum
-    dskNil, dskDouble40TrackImage, dskGetInfo, dskExpand40TrackImage, dskReplaceIpl, dskGenerateCalibrationImage
+    dskNil, dskDouble40TrackImage, dskGetInfo, dskExpand40TrackImage, dskReplaceIpl, dskGenerateCalibrationImage, dskSetRxrHeader
 var mode : Mode = dskNil
 
 for kind, key, val in getopt(commandLineParams()):
@@ -177,6 +188,7 @@ for kind, key, val in getopt(commandLineParams()):
         of "tracks", "t": mode = dskGetInfo
         of "patch-ipl", "p": mode = dskReplaceIpl
         of "generate", "g": mode = dskGenerateCalibrationImage
+        of "rxr", "r": mode = dskSetRxrHeader
         of "40": is40Track = true
         of "80": is40Track = false
     of cmdEnd:
@@ -198,4 +210,6 @@ else:
             replaceIpl(filename, patchname)
     of dskGenerateCalibrationImage:
         generateCalibrationImage(filename, is40Track)
+    of dskSetRxrHeader:
+        setRxrHeader(filename)
     else: usage()
