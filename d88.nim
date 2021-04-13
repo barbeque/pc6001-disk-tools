@@ -4,6 +4,23 @@ import strformat
 import parseopt
 import strutils
 
+proc setRxrHeader(filename: string, verbose: bool) =
+    var diskContent = readFile(filename)
+
+    # offset 704 seems to be the magic one
+    if diskContent[704] == 'S' and diskContent[705] == 'Y' and diskContent[706] == 'S':
+        diskContent[704] = 'R';
+        diskContent[705] = 'X';
+        diskContent[706] = 'R';
+
+        var outputFilename = "RXR-" & filename
+        writeFile(outputFilename, diskContent)
+
+        if verbose:
+            echo fmt"Saved modified disk image to '{outputFilename}'."
+    else:
+        echo fmt"Disk image does not contain the SYS header tag at offset 704. Bailing out."
+
 proc changeMediaType(filename: string, rawMediaType: string, verbose: bool) =
     # parse the media type
     var newMediaType = parseHexInt(rawMediaType)
@@ -46,7 +63,7 @@ proc dump(filename : string) =
 
 proc usage() =
     echo fmt"Usage: {lastPathPart(paramStr(0))} [command] filename"
-    echo "Commands: --help, --dump, --media <new media type>"
+    echo "Commands: --help, --dump, --media <new media type>, --rxr"
     echo "Options: --verbose"
     quit(1)
 
@@ -54,7 +71,7 @@ var filename: string
 var newDiskType: string
 var verbose = false
 type Mode = enum
-    d88Nil, d88Dump, d88ChangeMediaType
+    d88Nil, d88Dump, d88ChangeMediaType, d88SetRxrHeader
 var mode : Mode = d88Nil
 
 for kind, key, val in getopt(commandLineParams()):
@@ -72,6 +89,7 @@ for kind, key, val in getopt(commandLineParams()):
         of "help", "h": usage()
         of "dump", "d": mode = d88Dump
         of "media", "m": mode = d88ChangeMediaType
+        of "rxr", "r": mode = d88SetRxrHeader
         of "verbose", "v": verbose = true
     of cmdEnd:
         assert(false)
@@ -83,4 +101,5 @@ else:
     case mode
     of d88Dump: dump(filename)
     of d88ChangeMediaType: changeMediaType(filename, newDiskType, verbose)
+    of d88SetRxrHeader: setRxrHeader(filename, verbose)
     else: usage()
