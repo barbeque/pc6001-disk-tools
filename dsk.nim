@@ -111,14 +111,14 @@ proc replaceIpl(filename : string, patchname : string) =
     defer: patchfs.close()
     doAssert patchFs.isNil == false, fmt"Patch '{patchname}' could not be loaded"
     doAssert patchfs.readData(addr(patchBuffer), BYTES_PER_SECTOR) == BYTES_PER_SECTOR, fmt"Patch was too short (expected {BYTES_PER_SECTOR})"
-    doAssert patchFs.atEnd() == true, fmt"Patch was too long (expected {BYTES_PER_SECTOR})"
+    doAssert patchFs.atEnd() == true, fmt"Patch '{patchname}' was too long (expected {BYTES_PER_SECTOR})"
 
     var diskBuffer : array[SIZE_1D_IMAGE, char]
     var ifs = newFileStream(filename, fmRead)
     defer: ifs.close()
     doAssert ifs.isNil == false, fmt"Source disk image '{filename}' could not be loaded"
-    doAssert ifs.readData(addr(diskBuffer), SIZE_1D_IMAGE) == SIZE_1D_IMAGE, "Source disk image was too short"
-    doAssert ifs.atEnd() == true, "Source disk image was too long"
+    doAssert ifs.readData(addr(diskBuffer), SIZE_1D_IMAGE) == SIZE_1D_IMAGE, fmt"Source disk image '{filename}' was too short"
+    doAssert ifs.atEnd() == true, fmt"Source disk image '{filename}' was too long"
 
     # apply the patch
     for i in 0 ..< BYTES_PER_SECTOR:
@@ -158,7 +158,7 @@ proc setRxrHeader(filename: string) =
         var output_filename = insertFilenameTag(filename, ".RXR")
         writeFile(output_filename, diskContents)
     else:
-        echo "Disk image does not contain SYS header, no patch was performed"
+        echo fmt"Disk image '{filename}' does not contain SYS header, no patch was performed"
 
 proc usage() =
     echo fmt"Usage: {lastPathPart(paramStr(0))} [command] filename <patchname>"
