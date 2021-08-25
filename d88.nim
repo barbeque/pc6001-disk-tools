@@ -57,6 +57,18 @@ proc dump(filename : string) =
         u8: disk_type
         lu32: disk_size
 
+    createParser(d88_sector_header):
+        u8: cylinder
+        u8: head
+        u8: sector_id
+        u8: sector_size
+        lu16: sectors_per_track
+        u8: density
+        u8: is_deleted
+        u8: fdc_status
+        u8: reserved[5]
+        lu16: sector_byte_length
+
     echo fmt"Reading d88 = '{filename}'"
     var fs = newFileStream(filename, fmRead)
     defer: fs.close()
@@ -67,6 +79,30 @@ proc dump(filename : string) =
         echo fmt"Disk media type = '${toHex(data.disk_type, 2)}' ({guess_media_type(data.disk_type)})"
         echo fmt"Disk size = '{data.disk_size}' bytes"
         echo fmt"Reserved = '{data.reserved}'"
+
+        # read some lu32s off
+        var first_track_offset : uint32 = 0
+        fs.read(first_track_offset)
+        echo fmt"First track offset = {first_track_offset}"
+
+        if first_track_offset == 688:
+            echo "\t164-track image"
+        elif first_track_offset == 672:
+            echo "\t160-track image"
+        else:
+            echo "\tFirst track offset looks bad (should be 688 or 672); image may be hosed"
+
+        fs.setPosition(int(first_track_offset))
+        var sector_data = d88_sector_header.get(fs)
+        echo fmt"Cylinder {sector_data.cylinder} Head {sector_data.head} Sector {sector_data.sector_id}"
+        echo fmt"Sector size {sector_data.sector_size}"
+        echo fmt"Sectors per track {sector_data.sectors_per_track}"
+        echo fmt"Sector density {sector_data.density}"
+        echo fmt"Is deleted? {sector_data.is_deleted != 0x00}"
+        echo fmt"FDC status {sector_data.fdc_status}"
+        echo fmt"Reserved sector data = {sector_data.reserved}"
+        echo fmt"Sector length in bytes {sector_data.sector_byte_length}"
+
 
 proc usage() =
     echo fmt"Usage: {lastPathPart(paramStr(0))} [command] filename"
