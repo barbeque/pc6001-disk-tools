@@ -42,6 +42,13 @@ proc changeMediaType(filename: string, rawMediaType: string, verbose: bool) =
     if verbose:
         echo fmt"Modified image written to {output_filename}"
 
+proc guess_media_type(media_type : uint8) : string =
+    return case media_type:
+        of 0x00: "2D"
+        of 0x10: "2DD"
+        of 0x20: "2HD"
+        else: "unknown"
+
 proc dump(filename : string) =
     createParser(d88_header):
         u8: disk_name[17]
@@ -57,7 +64,7 @@ proc dump(filename : string) =
         var data = d88_header.get(fs)
         echo fmt"Disk name = '{cast[string](data.disk_name)}'"
         echo fmt"Write protected? = '{data.write_protected == 0x10}'"
-        echo fmt"Disk media type = '{data.disk_type}'"
+        echo fmt"Disk media type = '${toHex(data.disk_type, 2)}' ({guess_media_type(data.disk_type)})"
         echo fmt"Disk size = '{data.disk_size}'"
         echo fmt"Reserved = '{data.reserved}'"
 
