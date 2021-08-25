@@ -55,7 +55,7 @@ proc dump(filename : string) =
         u8: reserved[9]
         u8: write_protected
         u8: disk_type
-        u32: disk_size
+        lu32: disk_size
 
     echo fmt"Reading d88 = '{filename}'"
     var fs = newFileStream(filename, fmRead)
@@ -65,7 +65,7 @@ proc dump(filename : string) =
         echo fmt"Disk name = '{cast[string](data.disk_name)}'"
         echo fmt"Write protected? = '{data.write_protected == 0x10}'"
         echo fmt"Disk media type = '${toHex(data.disk_type, 2)}' ({guess_media_type(data.disk_type)})"
-        echo fmt"Disk size = '{data.disk_size}'"
+        echo fmt"Disk size = '{data.disk_size}' bytes"
         echo fmt"Reserved = '{data.reserved}'"
 
 proc usage() =
