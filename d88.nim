@@ -65,13 +65,13 @@ proc dump_sector(fs : Stream, sector_offset : uint32) =
     fs.setPosition(int(sector_offset))
     var sector_data = d88_sector_header.get(fs)
     echo fmt"Cylinder {sector_data.cylinder} Head {sector_data.head} Sector {sector_data.sector_id}"
-    echo fmt"Sector size {sector_data.sector_size}"
-    echo fmt"Sectors per track {sector_data.sectors_per_track}"
-    echo fmt"Sector density {sector_data.density}"
-    echo fmt"Is deleted? {sector_data.is_deleted != 0x00}"
-    echo fmt"FDC status {sector_data.fdc_status}"
-    echo fmt"Reserved sector data = {sector_data.reserved}"
-    echo fmt"Sector length in bytes {sector_data.sector_byte_length}"
+    echo fmt" Sector size {sector_data.sector_size}"
+    echo fmt" Sectors per track {sector_data.sectors_per_track}"
+    echo fmt" Sector density {sector_data.density}"
+    echo fmt" Is deleted? {sector_data.is_deleted != 0x00}"
+    echo fmt" FDC status {sector_data.fdc_status}"
+    echo fmt" Reserved sector data = {sector_data.reserved}"
+    echo fmt" Sector length in bytes {sector_data.sector_byte_length}"
 
 proc dump(filename : string) =
     createParser(d88_header):
@@ -119,6 +119,7 @@ proc dump(filename : string) =
         for i in 0 ..< len(table.tracks):
             if table.tracks[i] != 0:
                 # Dump the head sector of each track.
+                echo fmt"== Track at {table.tracks[i]} =="
                 dump_sector(fs, table.tracks[i])
 
 proc usage() =
